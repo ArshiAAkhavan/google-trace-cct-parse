@@ -1,15 +1,14 @@
 mod cct;
 mod trace;
+mod utils;
 
-use std::{
-    cmp::max,
-    collections::{hash_map::Entry, HashMap},
-};
+use std::collections::HashMap;
 
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use trace::{ApplicationTrace, Event};
+use trace::{ApplicationTrace, ThreadTrace};
 
-pub use cct::CallingContextTree;
+pub use cct::CallingContextTree as CCT;
+pub use trace::Event;
+pub use trace::EventPhase;
 pub use trace::Trace;
 
 pub fn build_application_trace(trace: Trace) -> ApplicationTrace {
@@ -23,6 +22,15 @@ pub fn build_application_trace(trace: Trace) -> ApplicationTrace {
         });
     for (_, events) in traces.iter_mut() {
         events.sort();
+    }
+    let mut app = ApplicationTrace::new();
+    for ((pid, tid), events) in traces.into_iter() {
+        app.processes.entry(pid).and_modify(|process_trace| {
+            process_trace
+                .threads
+                .entry(tid)
+                .or_insert(ThreadTrace::new(tid, CCT::new(events)));
+        });
     }
 
     todo!()

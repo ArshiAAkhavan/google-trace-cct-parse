@@ -1,24 +1,44 @@
 use std::collections::HashMap;
 
+use crate::CCT;
 use serde::Deserialize;
 
-use crate::CallingContextTree;
-
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default)]
 pub struct ApplicationTrace {
     pub processes: HashMap<i32, ProcessTrace>,
 }
 
-#[derive(Debug, Deserialize)]
+impl ApplicationTrace {
+    pub fn new() -> Self {
+        Default::default()
+    }
+}
+
+#[derive(Debug)]
 pub struct ProcessTrace {
     pub pid: i32,
     pub threads: HashMap<i32, ThreadTrace>,
 }
 
-#[derive(Debug, Deserialize)]
+impl ProcessTrace {
+    pub fn new(pid: i32) -> Self {
+        Self {
+            pid,
+            threads: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct ThreadTrace {
     pub tid: i32,
-    pub cct: CallingContextTree,
+    pub cct: CCT,
+}
+
+impl ThreadTrace {
+    pub fn new(tid: i32, cct: CCT) -> Self {
+        Self { tid, cct }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -26,13 +46,17 @@ pub struct Trace {
     #[serde(rename = "traceEvents")]
     pub events: Vec<Event>,
 }
-
 #[derive(Debug, Deserialize, Clone, Eq, PartialEq)]
 pub struct Event {
     name: String,
 
     #[serde(rename = "cat")]
     category: String,
+    #[serde(default)]
+    #[serde(deserialize_with = "crate::utils::deserialize_hex_option")]
+    id: Option<usize>,
+    scope: Option<String>,
+
     #[serde(rename = "ph")]
     pub phase_type: EventPhase,
     pub pid: i32,
