@@ -4,7 +4,7 @@ mod utils;
 
 use std::collections::HashMap;
 
-use trace::{ApplicationTrace, ThreadTrace};
+use trace::ApplicationTrace;
 
 pub use cct::CallingContextTree as CCT;
 pub use trace::Event;
@@ -24,14 +24,14 @@ pub fn build_application_trace(trace: Trace) -> ApplicationTrace {
         events.sort();
     }
     let mut app = ApplicationTrace::new();
-    for ((pid, tid), events) in traces.into_iter() {
-        app.processes.entry(pid).and_modify(|process_trace| {
-            process_trace
-                .threads
-                .entry(tid)
-                .or_insert(ThreadTrace::new(tid, CCT::new(events)));
-        });
-    }
+    //for ((pid, tid), events) in traces.into_iter() {
+    //    app.processes.entry(pid).and_modify(|process_trace| {
+    //        process_trace
+    //            .threads
+    //            .entry(tid)
+    //            .or_insert(ThreadTrace::new(tid, CCT::new(events)));
+    //    });
+    //}
 
     todo!()
 }

@@ -3,41 +3,24 @@ use std::collections::HashMap;
 use crate::CCT;
 use serde::Deserialize;
 
+type ProcessId = i32;
+type ThreadId = i32;
+type SyncTaskId = (ProcessId, ThreadId);
+
+type Scope = String;
+type Id = usize;
+type Category = String;
+type AsyncTaskId = (Scope, Id, Category);
+
 #[derive(Debug, Default)]
 pub struct ApplicationTrace {
-    pub processes: HashMap<i32, ProcessTrace>,
+    pub sync_tasks: HashMap<SyncTaskId, CCT>,
+    pub async_tasks: HashMap<AsyncTaskId, CCT>,
 }
 
 impl ApplicationTrace {
     pub fn new() -> Self {
         Default::default()
-    }
-}
-
-#[derive(Debug)]
-pub struct ProcessTrace {
-    pub pid: i32,
-    pub threads: HashMap<i32, ThreadTrace>,
-}
-
-impl ProcessTrace {
-    pub fn new(pid: i32) -> Self {
-        Self {
-            pid,
-            threads: Default::default(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct ThreadTrace {
-    pub tid: i32,
-    pub cct: CCT,
-}
-
-impl ThreadTrace {
-    pub fn new(tid: i32, cct: CCT) -> Self {
-        Self { tid, cct }
     }
 }
 
@@ -51,16 +34,17 @@ pub struct Event {
     name: String,
 
     #[serde(rename = "cat")]
-    category: String,
+    pub category: Category,
     #[serde(default)]
-    #[serde(deserialize_with = "crate::utils::deserialize_hex_option")]
-    id: Option<usize>,
-    scope: Option<String>,
+    #[serde(deserialize_with = "crate::utils::de_hex_to_int")]
+    pub id: Id,
+    #[serde(default)]
+    pub scope: Scope,
 
     #[serde(rename = "ph")]
     pub phase_type: EventPhase,
-    pub pid: i32,
-    pub tid: i32,
+    pub pid: ProcessId,
+    pub tid: ThreadId,
     #[serde(rename = "ts")]
     timestamp: i64,
 }

@@ -5,11 +5,17 @@ use serde::{
     Deserializer,
 };
 
-pub fn deserialize_hex_option<'de, D>(deserializer: D) -> Result<Option<usize>, D::Error>
+pub fn de_hex_to_int<'de, D>(deserializer: D) -> Result<usize, D::Error>
 where
     D: Deserializer<'de>,
 {
-    deserializer.deserialize_option(HexOrIntVisitor)
+    match deserializer.deserialize_option(HexOrIntVisitor) {
+        Ok(hex) => match hex {
+            Some(hex) => Ok(hex),
+            None => Ok(0),
+        },
+        Err(e) => Err(e),
+    }
 }
 
 struct HexOrIntVisitor;
