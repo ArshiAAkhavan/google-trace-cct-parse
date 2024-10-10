@@ -2,6 +2,7 @@ use cct::{build_application_trace, EventPhase, Trace};
 use std::{any::Any, collections::HashMap, error::Error, fs::File, io::BufReader};
 
 fn main() -> Result<(), Box<dyn Error>> {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     //let data = File::open("data/trace-1.json")?;
     //let data = File::open("data/trace-heavy.json")?;
     //let data = File::open("data/sample.json")?;
