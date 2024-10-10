@@ -2,36 +2,40 @@ mod cct;
 mod trace;
 mod utils;
 
-use std::collections::HashMap;
-
+use trace::ApplicationCCT;
 use trace::ApplicationTrace;
 
-pub use cct::CallingContextTree as CCT;
+pub use cct::CCT;
 pub use trace::Event;
 pub use trace::EventPhase;
 pub use trace::Trace;
 
-pub fn build_application_trace(trace: Trace) -> ApplicationTrace {
-    let mut traces: HashMap<(i32, i32), Vec<Event>> = HashMap::new();
-    trace
-        .events
-        .iter()
-        .map(|e| ((e.pid, e.tid), e))
-        .for_each(|(key, val)| {
-            traces.entry(key).or_default().push(val.clone());
-        });
-    for (_, events) in traces.iter_mut() {
-        events.sort();
-    }
-    let mut app = ApplicationTrace::new();
-    //for ((pid, tid), events) in traces.into_iter() {
-    //    app.processes.entry(pid).and_modify(|process_trace| {
-    //        process_trace
-    //            .threads
-    //            .entry(tid)
-    //            .or_insert(ThreadTrace::new(tid, CCT::new(events)));
-    //    });
-    //}
+pub fn build_application_cct(trace: Trace) -> ApplicationCCT {
+    let mut app_trace = ApplicationTrace::new();
 
-    todo!()
+    for event in trace.events.into_iter() {
+        match event.phase_type {
+            EventPhase::SyncBegin
+            | EventPhase::SyncEnd
+            | EventPhase::SyncInstant
+            | EventPhase::Complete => {
+                let task_id = (event.pid, event.tid);
+                app_trace
+                    .sync_tasks
+                    .entry(task_id)
+                    .and_modify(|events| events.push(event.clone()))
+                    .or_insert(vec![event]);
+            }
+            EventPhase::AsyncBegin | EventPhase::AsyncEnd | EventPhase::AsyncInstant => {
+                let task_id = (event.scope.clone(), event.id, event.category.clone());
+                app_trace
+                    .async_tasks
+                    .entry(task_id)
+                    .and_modify(|events| events.push(event.clone()))
+                    .or_insert(vec![event]);
+            }
+            _ => (),
+        }
+    }
+    app_trace.application_cct()
 }

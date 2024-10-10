@@ -14,14 +14,35 @@ type AsyncTaskId = (Scope, Id, Category);
 
 #[derive(Debug, Default)]
 pub struct ApplicationTrace {
-    pub sync_tasks: HashMap<SyncTaskId, CCT>,
-    pub async_tasks: HashMap<AsyncTaskId, CCT>,
+    pub sync_tasks: HashMap<SyncTaskId, Vec<Event>>,
+    pub async_tasks: HashMap<AsyncTaskId, Vec<Event>>,
 }
 
 impl ApplicationTrace {
     pub fn new() -> Self {
         Default::default()
     }
+
+    pub fn application_cct(self) -> ApplicationCCT {
+        let mut app_cct = ApplicationCCT {
+            ..Default::default()
+        };
+        for (task_id, events) in self.sync_tasks {
+            app_cct.sync_tasks.insert(task_id, CCT::from_events(events));
+        }
+        for (task_id, events) in self.async_tasks {
+            app_cct
+                .async_tasks
+                .insert(task_id, CCT::from_events(events));
+        }
+        app_cct
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ApplicationCCT {
+    pub sync_tasks: HashMap<SyncTaskId, CCT>,
+    pub async_tasks: HashMap<AsyncTaskId, CCT>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,7 +67,7 @@ pub struct Event {
     pub pid: ProcessId,
     pub tid: ThreadId,
     #[serde(rename = "ts")]
-    timestamp: i64,
+    pub timestamp: i64,
 }
 
 impl Ord for Event {
