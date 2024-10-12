@@ -1,4 +1,5 @@
-use cct::build_application_cct;
+use baseline::build_application_cct;
+
 use std::{collections::HashMap, error::Error, fs::File, io::BufReader};
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -8,7 +9,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     //let data = File::open("data/sample.json")?;
     let data = File::open("data/trace-valid-ending.json")?;
     let data = BufReader::new(data);
-    let trace: cct::Trace = serde_json::from_reader(data)?;
+    let trace: baseline::Trace = serde_json::from_reader(data)?;
     dbg!(trace.events.len());
     let mut type_count = HashMap::new();
 

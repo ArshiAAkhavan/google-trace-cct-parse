@@ -61,7 +61,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cct"
+name = "baseline"
 version = "0.1.0"
 dependencies = [
  "env_logger",
@@ -129,6 +129,16 @@ dependencies = [
  "env_filter",
  "humantime",
  "log",
+]
+
+[[package]]
+name = "experiment"
+version = "0.1.0"
+dependencies = [
+ "baseline",
+ "env_logger",
+ "log",
+ "serde_json",
 ]
 
 [[package]]
