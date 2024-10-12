@@ -99,7 +99,7 @@ impl CCT {
             // check for `EventPhase::Complete`s since this nodes have their stop time
             // available at construction
             while let Some(stop_time) = parent.stop_time {
-                if stop_time < event.timestamp {
+                if stop_time <= event.timestamp {
                     event_stack.pop();
                     parent = cct.get_node(*event_stack.last().unwrap());
                 } else {
