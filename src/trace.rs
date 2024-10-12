@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 type ProcessId = i32;
 type ThreadId = i32;
-type SyncTaskId = (ProcessId, ThreadId);
+pub type SyncTaskId = (ProcessId, ThreadId);
 
 type Scope = String;
 type Id = usize;
@@ -30,15 +30,18 @@ impl ApplicationTrace {
         let mut app_cct = ApplicationCCT {
             ..Default::default()
         };
-        for (task_id, events) in self.sync_tasks {
+        for (task_id, mut events) in self.sync_tasks {
+            events.sort();
             app_cct.sync_tasks.insert(task_id, CCT::from_events(events));
         }
-        for (task_id, events) in self.async_tasks {
+        for (task_id, mut events) in self.async_tasks {
+            events.sort();
             app_cct
                 .async_tasks
                 .insert(task_id, CCT::from_events(events));
         }
-        for (object_life_cycle_id, events) in self.object_life_cycle {
+        for (object_life_cycle_id, mut events) in self.object_life_cycle {
+            events.sort();
             app_cct
                 .object_life_cycle
                 .insert(object_life_cycle_id, CCT::from_events(events));
