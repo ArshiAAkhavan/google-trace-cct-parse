@@ -12,10 +12,13 @@ type Id = usize;
 type Category = String;
 type AsyncTaskId = (Scope, Id, Category);
 
+type ObjectLifeCycleId = (Scope, Id);
+
 #[derive(Debug, Default)]
 pub struct ApplicationTrace {
     pub sync_tasks: HashMap<SyncTaskId, Vec<Event>>,
     pub async_tasks: HashMap<AsyncTaskId, Vec<Event>>,
+    pub object_life_cycle: HashMap<ObjectLifeCycleId, Vec<Event>>,
 }
 
 impl ApplicationTrace {
@@ -35,6 +38,11 @@ impl ApplicationTrace {
                 .async_tasks
                 .insert(task_id, CCT::from_events(events));
         }
+        for (object_life_cycle_id, events) in self.object_life_cycle {
+            app_cct
+                .object_life_cycle
+                .insert(object_life_cycle_id, CCT::from_events(events));
+        }
         app_cct
     }
 }
@@ -43,6 +51,7 @@ impl ApplicationTrace {
 pub struct ApplicationCCT {
     pub sync_tasks: HashMap<SyncTaskId, CCT>,
     pub async_tasks: HashMap<AsyncTaskId, CCT>,
+    pub object_life_cycle: HashMap<ObjectLifeCycleId, CCT>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -52,7 +61,7 @@ pub struct Trace {
 }
 #[derive(Debug, Deserialize, Clone, Eq, PartialEq)]
 pub struct Event {
-    name: String,
+    pub name: String,
 
     #[serde(rename = "cat")]
     pub category: Category,
@@ -64,10 +73,16 @@ pub struct Event {
 
     #[serde(rename = "ph")]
     pub phase_type: EventPhase,
+
     pub pid: ProcessId,
     pub tid: ThreadId,
+
     #[serde(rename = "ts")]
     pub timestamp: i64,
+    #[serde(rename = "dur")]
+    pub duration: Option<i64>,
+
+    pub args: Option<serde_json::Value>,
 }
 
 impl Ord for Event {
@@ -79,6 +94,16 @@ impl Ord for Event {
 impl PartialOrd for Event {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.timestamp.partial_cmp(&other.timestamp)
+    }
+}
+
+impl std::fmt::Display for Event {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[{}]:{}<s: {},id: {},cat: {}| pid: {},tid: {}>",
+            self.phase_type, self.timestamp, self.scope, self.id, self.category, self.pid, self.tid
+        )
     }
 }
 
@@ -134,4 +159,33 @@ pub enum EventPhase {
     Complete,
     #[serde(rename = "C")]
     Counter,
+}
+impl std::fmt::Display for EventPhase {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let display = match self {
+            EventPhase::SyncBegin => "B",
+            EventPhase::SyncEnd => "E",
+            EventPhase::SyncInstant => "i",
+            EventPhase::AsyncBegin => "b",
+            EventPhase::AsyncEnd => "e",
+            EventPhase::AsyncInstant => "n",
+            EventPhase::FlowStart => "s",
+            EventPhase::FlowEnd => "f",
+            EventPhase::FlowStep => "t",
+            EventPhase::ObjectCreate => "N",
+            EventPhase::ObjectDestroy => "D",
+            EventPhase::ObjectSnapshot => "O",
+            EventPhase::MemoryDumpGlobal => "V",
+            EventPhase::MemoryDumpProcess => "v",
+            EventPhase::ContextEnter => "(",
+            EventPhase::ContextLeave => ")",
+            EventPhase::Metadata => "M",
+            EventPhase::Mark => "R",
+            EventPhase::Clock => "c",
+            EventPhase::Sample => "P",
+            EventPhase::Complete => "X",
+            EventPhase::Counter => "C",
+        };
+        write!(f, "{display}")
+    }
 }
