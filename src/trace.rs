@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, default};
 
 use crate::CCT;
 use serde::Deserialize;
@@ -59,7 +59,7 @@ pub struct Trace {
     #[serde(rename = "traceEvents")]
     pub events: Vec<Event>,
 }
-#[derive(Debug, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Deserialize, Clone, Eq, PartialEq, Default)]
 pub struct Event {
     pub name: String,
 
@@ -85,6 +85,32 @@ pub struct Event {
     pub args: Option<serde_json::Value>,
 }
 
+impl Event {
+    pub fn merge(&mut self, other: &Self) {
+        if !other.name.is_empty() {
+            self.name = other.name.clone()
+        }
+        if !other.category.is_empty() {
+            self.category = other.category.clone()
+        }
+        if other.id != 0 {
+            self.id = other.id
+        }
+        if !other.scope.is_empty() {
+            self.scope = other.scope.clone()
+        }
+        if other.pid != 0 {
+            self.pid = other.pid
+        }
+        if other.tid != 0 {
+            self.tid = other.tid
+        }
+        if other.args.is_some() {
+            self.args = other.args.clone()
+        }
+    }
+}
+
 impl Ord for Event {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.timestamp.cmp(&other.timestamp)
@@ -107,7 +133,7 @@ impl std::fmt::Display for Event {
     }
 }
 
-#[derive(Debug, Deserialize, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Deserialize, Clone, Eq, PartialEq, Hash, Default)]
 pub enum EventPhase {
     #[serde(rename = "B")]
     SyncBegin,
@@ -154,6 +180,7 @@ pub enum EventPhase {
     #[serde(rename = "c")]
     Clock,
     #[serde(rename = "P")]
+    #[default]
     Sample,
     #[serde(rename = "X")]
     Complete,

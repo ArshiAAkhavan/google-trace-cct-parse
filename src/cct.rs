@@ -4,7 +4,6 @@ use log::{info, warn};
 
 use crate::{Event, EventPhase};
 
-#[derive(Debug)]
 pub struct CCT {
     nodes: Vec<CCTNode>,
     metadata: CCTMeta,
@@ -16,6 +15,7 @@ pub struct CCTNode {
     start_time: i64,
     stop_time: Option<i64>,
     parent_node_id: Option<usize>,
+    event: Event,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -30,18 +30,26 @@ impl CCTNode {
         start_time: i64,
         stop_time: Option<i64>,
         parent_node_id: Option<usize>,
+        event: Event,
     ) -> Self {
         Self {
             id,
             start_time,
             stop_time,
             parent_node_id,
+            event,
         }
     }
 }
 impl CCT {
     fn new() -> Self {
-        let root = CCTNode::new(0, i64::min_value(), Some(i64::max_value()), None);
+        let root = CCTNode::new(
+            0,
+            i64::min_value(),
+            Some(i64::max_value()),
+            None,
+            Default::default(),
+        );
         Self {
             nodes: vec![root],
             metadata: Default::default(),
@@ -56,8 +64,9 @@ impl CCT {
         start_time: i64,
         stop_time: Option<i64>,
         parent: Option<usize>,
+        event: Event,
     ) -> &CCTNode {
-        let node = CCTNode::new(self.nodes.len(), start_time, stop_time, parent);
+        let node = CCTNode::new(self.nodes.len(), start_time, stop_time, parent, event);
         self.nodes.push(node);
         self.nodes.last().unwrap()
     }
@@ -98,7 +107,10 @@ impl CCT {
             match event.phase_type {
                 EventPhase::SyncBegin | EventPhase::AsyncBegin | EventPhase::ObjectCreate => {
                     let parent = pop_until_valid_parent(&cct, &mut event_stack, &event);
-                    event_stack.push(cct.new_node(event.timestamp, None, Some(parent.id)).id);
+                    event_stack.push(
+                        cct.new_node(event.timestamp, None, Some(parent.id), event)
+                            .id,
+                    );
                 }
                 EventPhase::SyncEnd | EventPhase::AsyncEnd | EventPhase::ObjectDestroy => {
                     let id = loop {
@@ -118,6 +130,7 @@ impl CCT {
 
                     let node = cct.get_node_mut(id);
                     node.stop_time = Some(event.timestamp);
+                    node.event.merge(&event)
                 }
                 EventPhase::SyncInstant
                 | EventPhase::AsyncInstant
@@ -126,7 +139,12 @@ impl CCT {
                 | EventPhase::MemoryDumpGlobal
                 | EventPhase::Mark => {
                     let parent = pop_until_valid_parent(&cct, &mut event_stack, &event);
-                    cct.new_node(event.timestamp, Some(event.timestamp), Some(parent.id));
+                    cct.new_node(
+                        event.timestamp,
+                        Some(event.timestamp),
+                        Some(parent.id),
+                        event,
+                    );
                 }
                 EventPhase::Complete => {
                     let parent = pop_until_valid_parent(&cct, &mut event_stack, &event);
@@ -135,6 +153,7 @@ impl CCT {
                             event.timestamp,
                             event.duration.or(Some(0)).map(|dur| dur + event.timestamp),
                             Some(parent.id),
+                            event,
                         )
                         .id;
                     event_stack.push(node_id);
@@ -189,6 +208,12 @@ impl CCT {
     }
 }
 
+impl From<Vec<Event>> for CCT {
+    fn from(events: Vec<Event>) -> Self {
+        CCT::from_events(events)
+    }
+}
+
 fn extract_name_from_args(event: &Event) -> String {
     if let Some(args) = &event.args {
         if let serde_json::Value::Object(obj) = args {
@@ -203,7 +228,28 @@ fn extract_name_from_args(event: &Event) -> String {
     return String::from("");
 }
 
-impl Display for CCT {
+fn ignored(event: Event) {
+    info!("event of phase {} is ignored", event.phase_type)
+}
+
+impl std::fmt::Display for CCT {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let tree = build_visual_tree(self);
+        let lines = visualize_tree(&tree, 160);
+        writeln!(
+            f,
+            "context meta: {}|{}",
+            &self.metadata.process_name.clone().unwrap_or_default(),
+            &self.metadata.thread_name.clone().unwrap_or_default()
+        )?;
+        for line in lines {
+            writeln!(f, "{line}")?;
+        }
+        Ok(())
+    }
+}
+
+impl std::fmt::Debug for CCT {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let time_shift = self
             .nodes
@@ -226,27 +272,27 @@ impl Display for CCTNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "[{}] -> [{}]: ({},{})",
-            match self.parent_node_id {
-                Some(id) => id,
-                None => 0,
-            },
-            self.id,
-            self.start_time,
-            self.stop_time.unwrap_or_default()
+            "{:*<45} {{{}}}",
+            format!(
+                "[{}] -> [{}]: ({},{}) ",
+                match self.parent_node_id {
+                    Some(id) => id,
+                    None => 0,
+                },
+                self.id,
+                self.start_time,
+                self.stop_time.unwrap_or_default()
+            ),
+            self.event.name,
         )
     }
-}
-
-fn ignored(event: Event) {
-    info!("event of phase {} is ignored", event.phase_type)
 }
 
 pub struct VisualTree {
     nodes: Vec<VisualNode>,
 }
 
-pub fn build_visual_tree(cct: &CCT) -> VisualTree {
+fn build_visual_tree(cct: &CCT) -> VisualTree {
     let min_time = cct
         .nodes
         .iter()
@@ -285,24 +331,22 @@ pub fn build_visual_tree(cct: &CCT) -> VisualTree {
     tree
 }
 
-pub struct VisualNode {
+struct VisualNode {
     id: usize,
     start: i64,
     end: i64,
     children: Vec<usize>,
 }
 
-pub fn visualize_tree(tree: &VisualTree, max_char: usize) {
+fn visualize_tree(tree: &VisualTree, max_char: usize) -> Vec<String> {
     let root = &tree.nodes[0];
     let mut lines = Vec::new();
-    visualize(&root, tree, max_char, 0, &mut lines, 0);
-    println!("|{:-^width$}|", "#0#", width = max_char - 2);
-    for line in &lines {
-        println!("{line}");
-    }
+    lines.push(format!("|{:-^width$}|", "#0#", width = max_char - 2));
+    visualize(&root, tree, max_char, 0, &mut lines, 1);
+    lines
 }
 
-pub fn visualize(
+fn visualize(
     root: &VisualNode,
     tree: &VisualTree,
     len: usize,
@@ -323,17 +367,17 @@ pub fn visualize(
         ranges.push((child.start, child.end, child.id))
     }
     ranges.sort_by_key(|(start, _, _)| *start);
-    let range_weights: Vec<(f32, usize)> = ranges
+    let ranges: Vec<(f32, usize)> = ranges
         .iter()
         .map(|(s, e, id)| (f32::sqrt((e - s) as f32), *id))
         .collect();
 
-    let id_char_len: usize = root.children.iter().map(|id| format!("#{id}#").len()).sum();
-    let factor: f32 = (len.saturating_sub(id_char_len)) as f32
-        / range_weights.iter().map(|(w, _)| *w).sum::<f32>();
+    let id_overhead: usize = root.children.iter().map(|id| format!("#{id}#").len()).sum();
+    let factor: f32 =
+        (len.saturating_sub(id_overhead)) as f32 / ranges.iter().map(|(w, _)| *w).sum::<f32>();
 
     let mut children_repr = String::new();
-    for (weight, id) in &range_weights {
+    for (weight, id) in &ranges {
         let child_len = ((weight * factor) as usize).saturating_sub(1);
         let child_index = index + children_repr.len() + 1;
         let child_repr = format!(

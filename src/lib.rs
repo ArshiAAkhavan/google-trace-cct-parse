@@ -5,8 +5,6 @@ mod utils;
 use trace::ApplicationCCT;
 use trace::ApplicationTrace;
 
-pub use cct::build_visual_tree;
-pub use cct::visualize_tree;
 pub use cct::CCT;
 
 pub use trace::Event;
