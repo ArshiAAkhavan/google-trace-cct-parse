@@ -38,20 +38,21 @@ fn is_node1_parent_of_node2(cct: &CCT, node1: &CCTNode, node2: &CCTNode) -> bool
     false
 }
 
-fn covers(node1: &CCTNode, node2: &CCTNode) -> bool {
-    if let Some(node2_stop_time) = node2.stop_time {
-        if node2.start_time == node2_stop_time && node1.start_time == node2.start_time {
-            return false;
-        }
-    }
-    node1.start_time <= node2.start_time
-        && match node1.stop_time {
-            Some(self_stop_time) => match node2.stop_time {
-                Some(other_stop_time) => {
-                    self_stop_time >= other_stop_time && node2.start_time < self_stop_time
+fn covers(parent: &CCTNode, child: &CCTNode) -> bool {
+    match parent.stop_time {
+        Some(parent_stop_time) => match child.stop_time {
+            Some(child_stop_time) => {
+                // node2 is an instant event that started with the range event
+                // so they can be two seperate events
+                // s1 == s2 == e2
+                if parent.start_time == child.start_time && child.start_time == child_stop_time {
+                    false
+                } else {
+                    parent.start_time < child.start_time && child_stop_time < parent_stop_time
                 }
-                None => true,
-            },
-            None => true,
-        }
+            }
+            None => parent.start_time < child.start_time && child.start_time < parent_stop_time,
+        },
+        None => parent.start_time < child.start_time,
+    }
 }

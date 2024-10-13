@@ -307,38 +307,26 @@ impl Display for CCTNode {
 
 #[cfg(test)]
 mod test {
-    use std::{error::Error, fs::File, io::BufReader};
+    use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-    use crate::{build_application_cct, cct::verify, trace::SyncTaskId, Trace};
-
-    use super::CCT;
+    use crate::{build_application_cct, cct::verify, collect_traces, Trace};
 
     #[test]
-    fn check_cct_ordering() -> Result<(), Box<dyn Error>> {
-        let data = File::open("data/trace-valid-ending.json")?;
-        let data = BufReader::new(data);
-        let trace: Trace = serde_json::from_reader(data)?;
+    fn check_cct_ordering() -> std::io::Result<()> {
+        let trace: Trace = collect_traces("../data/trace-valid-ending.json".into())?;
         let app_cct = build_application_cct(trace);
-        let cct = app_cct.sync_tasks.get(&(133460, 133460)).unwrap();
-        dbg!(cct.into_iter().len());
-        verify::assert_cct_valid(&cct);
-
-        //let mut x: Vec<(SyncTaskId, CCT)> = app_cct.sync_tasks.clone().into_iter().collect();
-        //x.sort_by_key(|(k, _)| *k);
-
-        //for (id, cct) in x {
-        //    dbg!(id);
-        //    verify::assert_cct_valid(&cct)
-        //}
-
-        //for (_, cct) in app_cct.async_tasks {
-        //    verify::assert_cct_valid(&cct)
-        //}
-        //
-        //for (_, cct) in app_cct.object_life_cycle {
-        //    verify::assert_cct_valid(&cct)
-        //}
-
+        app_cct
+            .sync_tasks
+            .par_iter()
+            .for_each(|(_, cct)| verify::assert_cct_valid(&cct));
+        app_cct
+            .async_tasks
+            .par_iter()
+            .for_each(|(_, cct)| verify::assert_cct_valid(&cct));
+        app_cct
+            .object_life_cycle
+            .par_iter()
+            .for_each(|(_, cct)| verify::assert_cct_valid(&cct));
         Ok(())
     }
 }
