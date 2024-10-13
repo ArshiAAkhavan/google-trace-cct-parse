@@ -1,43 +1,58 @@
-use baseline::build_application_cct;
+use baseline::{build_application_cct, collect_traces};
+use log::info;
 
-use std::{collections::HashMap, error::Error, fs::File, io::BufReader};
+use std::collections::HashSet;
 
-fn main() -> Result<(), Box<dyn Error>> {
+macro_rules! track {
+    ($func:expr) => {{
+        use std::time::Instant;
+
+        // Start tracking the time
+        let start = Instant::now();
+        info!("track: [{}]\tstart calculating...", stringify!($func));
+
+        // Capture the function's output
+        let result = $func;
+
+        // Calculate the elapsed time
+        let duration = start.elapsed();
+
+        // Extract the function name (using stringify for better readability)
+        info!(
+            "track: [{}]\ttook {} ms to finish",
+            stringify!($func),
+            duration.as_millis()
+        );
+
+        // Return the result of the function
+        result
+    }};
+}
+
+fn main() -> std::io::Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-    //let data = File::open("data/trace-1.json")?;
-    //let data = File::open("data/trace-heavy.json")?;
-    //let data = File::open("data/sample.json")?;
-    let data = File::open("data/trace-valid-ending.json")?;
-    let data = BufReader::new(data);
-    let trace: baseline::Trace = serde_json::from_reader(data)?;
-    dbg!(trace.events.len());
-    let mut type_count = HashMap::new();
-
-    for event in trace.events.iter() {
-        type_count
-            .entry(&event.phase_type)
-            .and_modify(|x| *x += 1)
-            .or_insert(1);
-    }
-    dbg!(type_count);
-    let app_cct = build_application_cct(trace);
-
-    for (id, cct) in app_cct.sync_tasks {
-        println!("sync: {id:#?}");
-        println!("{cct:#?}");
-        println!("{cct}");
-    }
-
-    for (id, cct) in app_cct.async_tasks {
-        println!("async: {id:#?}");
-        println!("{cct:#?}");
-        println!("{cct}");
-    }
-
-    for (id, cct) in app_cct.object_life_cycle {
-        println!("object: {id:#?}");
-        println!("{cct:#?}");
-        println!("{cct}");
+    let trace_paths = {
+        let mut paths = HashSet::new();
+        paths.insert("data/trace-1.json");
+        paths.insert("data/trace-heavy.json");
+        paths.insert("data/trace-valid-ending.json");
+        paths
+    };
+    for trace_path in trace_paths {
+        let trace = track!(collect_traces(trace_path.into()))?;
+        let app_cct = track!(build_application_cct(trace));
+        println!(
+            "found {} sync cct in {trace_path} trace file",
+            app_cct.sync_tasks.len()
+        );
+        println!(
+            "found {} async cct in {trace_path} trace file",
+            app_cct.async_tasks.len()
+        );
+        println!(
+            "found {} object life cycle cct in {trace_path} trace file",
+            app_cct.object_life_cycle.len()
+        );
     }
 
     Ok(())
