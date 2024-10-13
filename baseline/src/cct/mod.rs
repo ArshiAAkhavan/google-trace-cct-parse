@@ -307,13 +307,15 @@ impl Display for CCTNode {
 
 #[cfg(test)]
 mod test {
+    use std::path::Path;
+
     use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
     use crate::{build_application_cct, cct::verify, collect_traces, Trace};
 
     #[test]
     fn check_cct_ordering() -> std::io::Result<()> {
-        let trace: Trace = collect_traces("../data/trace-valid-ending.json".into())?;
+        let trace: Trace = collect_traces(Path::new("../data/trace-valid-ending.json"))?;
         let app_cct = build_application_cct(trace);
         app_cct
             .sync_tasks

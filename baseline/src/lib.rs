@@ -5,7 +5,7 @@ mod utils;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Result;
-use std::path::PathBuf;
+use std::path::Path;
 
 use trace::ApplicationCCT;
 use trace::ApplicationTrace;
@@ -16,7 +16,7 @@ pub use trace::Event;
 pub use trace::EventPhase;
 pub use trace::Trace;
 
-pub fn collect_traces(trace_path: PathBuf) -> Result<Trace> {
+pub fn collect_traces(trace_path: &Path) -> Result<Trace> {
     let data = File::open(trace_path)?;
     let data = BufReader::new(data);
     let trace: Trace = serde_json::from_reader(data)?;

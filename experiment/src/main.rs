@@ -1,7 +1,7 @@
 use baseline::{build_application_cct, collect_traces};
 use log::info;
 
-use std::collections::HashSet;
+use std::{collections::HashSet, path::Path};
 
 macro_rules! track {
     ($func:expr) => {{
@@ -40,7 +40,7 @@ fn main() -> std::io::Result<()> {
     };
     for trace_path in trace_paths {
         info!("trace file: {trace_path}");
-        let trace = track!(collect_traces(trace_path.into()))?;
+        let trace = track!(collect_traces(Path::new(trace_path)))?;
         let app_cct = track!(build_application_cct(trace));
         consume(app_cct);
     }
