@@ -30,18 +30,15 @@ impl ApplicationTrace {
         let mut app_cct = ApplicationCCT {
             ..Default::default()
         };
-        for (task_id, mut events) in self.sync_tasks {
-            events.sort();
+        for (task_id, events) in self.sync_tasks {
             app_cct.sync_tasks.insert(task_id, CCT::from_events(events));
         }
-        for (task_id, mut events) in self.async_tasks {
-            events.sort();
+        for (task_id, events) in self.async_tasks {
             app_cct
                 .async_tasks
                 .insert(task_id, CCT::from_events(events));
         }
-        for (object_life_cycle_id, mut events) in self.object_life_cycle {
-            events.sort();
+        for (object_life_cycle_id, events) in self.object_life_cycle {
             app_cct
                 .object_life_cycle
                 .insert(object_life_cycle_id, CCT::from_events(events));
