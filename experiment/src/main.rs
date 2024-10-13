@@ -39,21 +39,15 @@ fn main() -> std::io::Result<()> {
         paths
     };
     for trace_path in trace_paths {
+        info!("trace file: {trace_path}");
         let trace = track!(collect_traces(trace_path.into()))?;
         let app_cct = track!(build_application_cct(trace));
-        println!(
-            "found {} sync cct in {trace_path} trace file",
-            app_cct.sync_tasks.len()
-        );
-        println!(
-            "found {} async cct in {trace_path} trace file",
-            app_cct.async_tasks.len()
-        );
-        println!(
-            "found {} object life cycle cct in {trace_path} trace file",
-            app_cct.object_life_cycle.len()
-        );
+        consume(app_cct);
     }
 
     Ok(())
+}
+
+fn consume<T>(data: T) {
+    _ = data;
 }
