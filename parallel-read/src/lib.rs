@@ -1,25 +1,17 @@
-mod cct;
-mod trace;
-
-use std::fs::File;
-use std::io::BufReader;
 use std::io::Result;
 use std::path::Path;
-
-use trace::ApplicationCCT;
 use trace::ApplicationTrace;
 
-pub use cct::CCT;
+pub use trace::{ApplicationCCT, Event, EventPhase, Trace};
 
-pub use trace::Event;
-pub use trace::EventPhase;
-pub use trace::Trace;
+mod cct;
+mod read;
+mod trace;
+pub use cct::CCT;
+use read::parallel_read;
 
 pub fn collect_traces(trace_path: &Path) -> Result<Trace> {
-    let data = File::open(trace_path)?;
-    let data = BufReader::new(data);
-    let trace: Trace = serde_json::from_reader(data)?;
-    Ok(trace)
+    parallel_read(trace_path)
 }
 
 pub fn build_application_cct(trace: Trace) -> ApplicationCCT {

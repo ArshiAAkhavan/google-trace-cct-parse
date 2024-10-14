@@ -1,5 +1,6 @@
-use baseline::{build_application_cct, collect_traces};
+//use baseline::{build_application_cct, collect_traces};
 use log::info;
+use parallel_read::{build_application_cct, collect_traces};
 
 use std::{collections::HashSet, path::Path};
 
@@ -7,24 +8,17 @@ macro_rules! track {
     ($func:expr) => {{
         use std::time::Instant;
 
-        // Start tracking the time
         let start = Instant::now();
         info!("track: [{}]\tstart calculating...", stringify!($func));
-
-        // Capture the function's output
         let result = $func;
-
-        // Calculate the elapsed time
         let duration = start.elapsed();
 
-        // Extract the function name (using stringify for better readability)
         info!(
             "track: [{}]\ttook {} ms to finish",
             stringify!($func),
             duration.as_millis()
         );
 
-        // Return the result of the function
         result
     }};
 }
