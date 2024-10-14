@@ -6,7 +6,7 @@ use std::{
     path::Path,
 };
 
-use log::warn;
+use log::{debug, warn};
 
 fn read_chunk(file: File, start_pos: u64, chunk_size: usize) -> Result<Vec<Event>> {
     let mut events = Vec::new();
@@ -78,6 +78,8 @@ fn collect_events(
 
 pub fn parallel_read(file_path: &Path) -> Result<Trace> {
     let num_threads = rayon::current_num_threads();
+    debug!("concurrency level: {num_threads}");
+
     let file = File::open(file_path)?;
     let file_size = file.metadata()?.len();
 
