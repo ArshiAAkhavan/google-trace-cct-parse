@@ -1,12 +1,11 @@
-use core::str;
+use baseline::{Event, Trace};
 use rayon::prelude::*;
 use std::{
     fs::File,
-    io::{BufRead, BufReader, Read, Result, Seek, SeekFrom},
+    io::{BufRead, BufReader, Result, Seek, SeekFrom},
     path::Path,
 };
 
-use crate::{Event, Trace};
 use log::warn;
 
 fn read_chunk(file: File, start_pos: u64, chunk_size: usize) -> Result<Vec<Event>> {
@@ -86,7 +85,7 @@ pub fn parallel_read(file_path: &Path) -> Result<Trace> {
     // i.e., {"traceEvents":[
     let init_skip = BufReader::new(file).read_until(b'\n', &mut vec![]).unwrap();
 
-    let chunk_size = (file_size as usize - init_skip + num_threads - 1) / num_threads; // Calculate chunk size per thread
+    let chunk_size = (file_size as usize - init_skip + num_threads - 1) / num_threads;
 
     let threads: Vec<usize> = (0..num_threads).collect();
 
@@ -103,24 +102,13 @@ pub fn parallel_read(file_path: &Path) -> Result<Trace> {
 
 #[cfg(test)]
 mod test {
-    use std::{fs::File, io::BufReader, path::Path};
-
-    use crate::Trace;
-
-    use super::parallel_read;
-
-    pub fn collect_traces_sync(trace_path: &Path) -> std::io::Result<Trace> {
-        let data = File::open(trace_path)?;
-        let data = BufReader::new(data);
-        let trace: Trace = serde_json::from_reader(data)?;
-        Ok(trace)
-    }
+    use std::path::Path;
 
     #[test]
     fn check_events_are_read_correctly() -> std::io::Result<()> {
         let file_path = "../data/trace-valid-ending.json";
-        let trace_sync = collect_traces_sync(Path::new(file_path))?;
-        let trace_parallel = parallel_read(Path::new(file_path))?;
+        let trace_sync = baseline::collect_traces(Path::new(file_path))?;
+        let trace_parallel = super::parallel_read(Path::new(file_path))?;
 
         assert_eq!(trace_sync.events.len(), trace_parallel.events.len());
 

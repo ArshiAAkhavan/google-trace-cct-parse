@@ -6,7 +6,7 @@ use std::io::BufReader;
 use std::io::Result;
 use std::path::Path;
 
-use trace::ApplicationCCT;
+pub use trace::ApplicationCCT;
 use trace::ApplicationTrace;
 
 pub use cct::CCT;

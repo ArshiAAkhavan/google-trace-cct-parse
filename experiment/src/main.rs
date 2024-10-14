@@ -30,6 +30,7 @@ fn main() -> std::io::Result<()> {
         paths.insert("data/trace-1.json");
         paths.insert("data/trace-heavy.json");
         paths.insert("data/trace-valid-ending.json");
+        paths.insert("data/trace-100%.json");
         paths
     };
     for trace_path in trace_paths {
