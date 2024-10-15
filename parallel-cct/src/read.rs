@@ -6,12 +6,12 @@ use std::{
     path::Path,
 };
 
-use log::debug;
+use log::{debug, warn};
 
-type Line = Vec<u8>;
+use crate::application::ApplicationTrace;
 
-fn read_chunk(file: File, start_pos: u64, chunk_size: usize) -> Result<Vec<Line>> {
-    let mut lines = Vec::new();
+fn read_chunk(file: File, start_pos: u64, chunk_size: usize) -> Result<Vec<Event>> {
+    let mut events = Vec::new();
     // Seek to the start position assigned to the thread
     let mut file = file;
 
@@ -45,52 +45,37 @@ fn read_chunk(file: File, start_pos: u64, chunk_size: usize) -> Result<Vec<Line>
                 end_of_events = true;
             }
             nbytes -= 2;
-            lines.push(buf[..nbytes].to_vec());
+
+            let event: Event = match serde_json::from_slice(&buf[..nbytes]) {
+                Ok(event) => event,
+                Err(e) => {
+                    warn!(
+                        "faced error when parsing {}: {e}",
+                        String::from_utf8_lossy(&buf[..nbytes])
+                    );
+                    buf.clear();
+                    continue;
+                }
+            };
             buf.clear();
+            events.push(event);
         } else {
             break;
         }
     }
-    Ok(lines)
+    Ok(events)
 }
 
-fn collect_lines(
+pub fn collect_events(
     thread_id: usize,
     file_path: &Path,
     chunk_size: usize,
     init_skip: u64,
-) -> std::io::Result<Vec<Line>> {
+) -> std::io::Result<Vec<Event>> {
     let file = File::open(file_path)?;
     let start_pos = init_skip + (thread_id * chunk_size) as u64;
-    let lines = read_chunk(file, start_pos, chunk_size)?;
-    Ok(lines)
-}
-
-pub fn parallel_parse(file_path: &Path) -> Result<Trace> {
-    let num_threads = rayon::current_num_threads();
-    debug!("concurrency level: {num_threads}");
-
-    let file = File::open(file_path)?;
-    let file_size = file.metadata()?.len();
-
-    // ignore the first line since it represents the trace array,
-    // i.e., {"traceEvents":[
-    let init_skip = BufReader::new(file).read_until(b'\n', &mut vec![]).unwrap();
-
-    let chunk_size = (file_size as usize - init_skip + num_threads - 1) / num_threads;
-
-    let threads: Vec<usize> = (0..num_threads).collect();
-
-    let events = threads
-        .par_iter()
-        .filter_map(move |thread_id| {
-            collect_lines(*thread_id, file_path, chunk_size, init_skip as u64).ok()
-        })
-        .flatten()
-        .filter_map(|line| serde_json::from_slice::<Event>(&line).ok())
-        .collect();
-
-    Ok(Trace { events })
+    let events: Vec<Event> = read_chunk(file, start_pos, chunk_size)?;
+    Ok(events)
 }
 
 #[cfg(test)]
@@ -98,10 +83,10 @@ mod test {
     use std::path::Path;
 
     #[test]
-    fn check_events_are_parsed_correctly() -> std::io::Result<()> {
+    fn check_events_are_read_correctly() -> std::io::Result<()> {
         let file_path = "../data/trace-valid-ending.json";
         let trace_sync = baseline::collect_traces(Path::new(file_path))?;
-        let trace_parallel = super::parallel_parse(Path::new(file_path))?;
+        let trace_parallel = super::parallel_read(Path::new(file_path))?;
 
         assert_eq!(trace_sync.events.len(), trace_parallel.events.len());
 

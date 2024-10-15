@@ -139,6 +139,7 @@ dependencies = [
  "baseline",
  "env_logger",
  "log",
+ "parallel-cct",
  "parallel-parse",
  "parallel-read",
  "serde_json",
@@ -179,8 +180,9 @@ name = "parallel-cct"
 version = "0.1.0"
 dependencies = [
  "baseline",
- "parallel-read",
+ "log",
  "rayon",
+ "serde_json",
 ]
 
 [[package]]

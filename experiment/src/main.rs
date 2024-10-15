@@ -1,6 +1,7 @@
 //use baseline::{build_application_cct, collect_traces};
 //use parallel_parse::{build_application_cct, collect_traces};
-use parallel_read::{build_application_cct, collect_traces};
+use parallel_cct::{build_application_cct, collect_traces};
+//use parallel_read::{build_application_cct, collect_traces};
 
 use log::info;
 use std::{collections::HashSet, path::Path};

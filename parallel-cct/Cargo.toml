@@ -1,0 +1,10 @@
+[package]
+name = "parallel-cct"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rayon = "1.10.0"
+baseline = { path = "../baseline" }
+serde_json = "1.0.128"
+log = "0.4.22"
