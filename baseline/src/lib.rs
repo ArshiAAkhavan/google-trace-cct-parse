@@ -12,9 +12,8 @@ use application::ApplicationTrace;
 
 pub use cct::CCT;
 
-pub use trace::Event;
-pub use trace::EventPhase;
-pub use trace::Trace;
+pub use trace::{Category, Id, ProcessId, Scope, ThreadId};
+pub use trace::{Event, EventPhase, Trace};
 
 pub fn collect_traces(trace_path: &Path) -> Result<Trace> {
     let data = File::open(trace_path)?;

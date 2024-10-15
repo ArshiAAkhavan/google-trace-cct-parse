@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{
-    trace::{Category, Id, ProcessId, Scope, ThreadId},
-    Event, CCT,
-};
+use crate::{Category, Event, Id, ProcessId, Scope, ThreadId, CCT};
 
 pub type SyncTaskId = (ProcessId, ThreadId);
 type AsyncTaskId = (Scope, Id, Category);
