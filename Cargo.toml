@@ -3,4 +3,4 @@ resolver = "2"
 
 members = [
   "baseline", "experiment", "parallel-read", "utils", "parallel-parse"
-]
+, "parallel-cct"]

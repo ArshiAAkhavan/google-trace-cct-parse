@@ -1,64 +1,17 @@
-use std::collections::HashMap;
-
-use crate::CCT;
 use serde::Deserialize;
-
-type ProcessId = i32;
-type ThreadId = i32;
-pub type SyncTaskId = (ProcessId, ThreadId);
-
-type Scope = String;
-type Id = usize;
-type Category = String;
-type AsyncTaskId = (Scope, Id, Category);
-
-type ObjectLifeCycleId = (Scope, Id);
-
-#[derive(Debug, Default)]
-pub struct ApplicationTrace {
-    pub sync_tasks: HashMap<SyncTaskId, Vec<Event>>,
-    pub async_tasks: HashMap<AsyncTaskId, Vec<Event>>,
-    pub object_life_cycle: HashMap<ObjectLifeCycleId, Vec<Event>>,
-}
-
-impl ApplicationTrace {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
-    pub fn application_cct(self) -> ApplicationCCT {
-        let mut app_cct = ApplicationCCT {
-            ..Default::default()
-        };
-        for (task_id, events) in self.sync_tasks {
-            app_cct.sync_tasks.insert(task_id, CCT::from_events(events));
-        }
-        for (task_id, events) in self.async_tasks {
-            app_cct
-                .async_tasks
-                .insert(task_id, CCT::from_events(events));
-        }
-        for (object_life_cycle_id, events) in self.object_life_cycle {
-            app_cct
-                .object_life_cycle
-                .insert(object_life_cycle_id, CCT::from_events(events));
-        }
-        app_cct
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct ApplicationCCT {
-    pub sync_tasks: HashMap<SyncTaskId, CCT>,
-    pub async_tasks: HashMap<AsyncTaskId, CCT>,
-    pub object_life_cycle: HashMap<ObjectLifeCycleId, CCT>,
-}
 
 #[derive(Debug, Deserialize)]
 pub struct Trace {
     #[serde(rename = "traceEvents")]
     pub events: Vec<Event>,
 }
+
+pub type ProcessId = i32;
+pub type ThreadId = i32;
+pub type Scope = String;
+pub type Id = usize;
+pub type Category = String;
+
 #[derive(Debug, Deserialize, Clone, Eq, PartialEq, Default)]
 pub struct Event {
     pub name: String,
