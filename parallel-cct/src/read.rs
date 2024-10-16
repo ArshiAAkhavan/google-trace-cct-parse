@@ -1,14 +1,11 @@
-use baseline::{Event, Trace};
-use rayon::prelude::*;
+use baseline::Event;
 use std::{
     fs::File,
     io::{BufRead, BufReader, Result, Seek, SeekFrom},
     path::Path,
 };
 
-use log::{debug, warn};
-
-use crate::application::ApplicationTrace;
+use log::warn;
 
 fn read_chunk(file: File, start_pos: u64, chunk_size: usize) -> Result<Vec<Event>> {
     let mut events = Vec::new();

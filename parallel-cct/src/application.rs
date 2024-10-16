@@ -38,8 +38,6 @@ impl ApplicationTrace {
             .map(|(id, events)| (id, CCT::from_events(events)))
             .collect();
 
-        dbg!(sync_tasks.len());
-        dbg!(async_tasks.len());
         ApplicationCCT {
             sync_tasks,
             async_tasks,
