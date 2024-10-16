@@ -39,18 +39,18 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn merge(&mut self, other: &Self) {
+    pub fn merge(&mut self, other: Self) {
         if !other.name.is_empty() {
-            self.name = other.name.clone()
+            self.name = other.name
         }
         if !other.category.is_empty() {
-            self.category = other.category.clone()
+            self.category = other.category
         }
         if other.id != 0 {
             self.id = other.id
         }
         if !other.scope.is_empty() {
-            self.scope = other.scope.clone()
+            self.scope = other.scope
         }
         if other.pid != 0 {
             self.pid = other.pid
@@ -59,7 +59,7 @@ impl Event {
             self.tid = other.tid
         }
         if other.args.is_some() {
-            self.args = other.args.clone()
+            self.args = other.args
         }
     }
 }

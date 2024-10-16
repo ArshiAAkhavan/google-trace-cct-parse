@@ -138,7 +138,7 @@ impl CCT {
 
                     let node = cct.get_node_mut(id);
                     node.stop_time = Some(event.timestamp);
-                    node.event.merge(&event)
+                    node.event.merge(event)
                 }
                 EventPhase::SyncInstant
                 | EventPhase::AsyncInstant
