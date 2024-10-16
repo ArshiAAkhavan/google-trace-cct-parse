@@ -88,7 +88,9 @@ impl CCT {
 impl CCT {
     pub fn from_events(events: Vec<Event>) -> Self {
         let mut cct = CCT::new();
-        let mut event_stack = vec![cct.root().id];
+        let mut stack = Vec::with_capacity(events.len() / 2);
+        stack.push(cct.root().id);
+
         fn pop_until_valid_parent<'a>(
             cct: &'a CCT,
             event_stack: &mut Vec<usize>,
@@ -112,15 +114,15 @@ impl CCT {
         for event in events {
             match event.phase_type {
                 EventPhase::SyncBegin | EventPhase::AsyncBegin | EventPhase::ObjectCreate => {
-                    let parent = pop_until_valid_parent(&cct, &mut event_stack, &event);
-                    event_stack.push(
+                    let parent = pop_until_valid_parent(&cct, &mut stack, &event);
+                    stack.push(
                         cct.new_node(event.timestamp, None, Some(parent.id), event)
                             .id,
                     );
                 }
                 EventPhase::SyncEnd | EventPhase::AsyncEnd | EventPhase::ObjectDestroy => {
                     let id = loop {
-                        match event_stack.pop() {
+                        match stack.pop() {
                             Some(id) => {
                                 if cct.get_node(id).stop_time.is_some() {
                                     continue;
@@ -144,7 +146,7 @@ impl CCT {
                 | EventPhase::MemoryDumpProcess
                 | EventPhase::MemoryDumpGlobal
                 | EventPhase::Mark => {
-                    let parent = pop_until_valid_parent(&cct, &mut event_stack, &event);
+                    let parent = pop_until_valid_parent(&cct, &mut stack, &event);
                     cct.new_node(
                         event.timestamp,
                         Some(event.timestamp),
@@ -153,7 +155,7 @@ impl CCT {
                     );
                 }
                 EventPhase::Complete => {
-                    let parent = pop_until_valid_parent(&cct, &mut event_stack, &event);
+                    let parent = pop_until_valid_parent(&cct, &mut stack, &event);
                     let node_id = cct
                         .new_node(
                             event.timestamp,
@@ -162,7 +164,7 @@ impl CCT {
                             event,
                         )
                         .id;
-                    event_stack.push(node_id);
+                    stack.push(node_id);
                 }
                 EventPhase::Counter
                 | EventPhase::Sample
