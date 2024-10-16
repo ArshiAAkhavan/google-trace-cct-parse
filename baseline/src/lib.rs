@@ -31,28 +31,20 @@ pub fn build_application_cct(trace: Trace) -> ApplicationCCT {
             | EventPhase::SyncEnd
             | EventPhase::SyncInstant
             | EventPhase::Complete => {
-                let task_id = (event.pid, event.tid);
-                app_trace
-                    .sync_tasks
-                    .entry(task_id)
-                    .and_modify(|events| events.push(event.clone()))
-                    .or_insert(vec![event]);
+                let id = (event.pid, event.tid);
+                app_trace.sync_tasks.entry(id).or_default().push(event);
             }
             EventPhase::AsyncBegin | EventPhase::AsyncEnd | EventPhase::AsyncInstant => {
-                let task_id = (event.scope.clone(), event.id, event.category.clone());
-                app_trace
-                    .async_tasks
-                    .entry(task_id)
-                    .and_modify(|events| events.push(event.clone()))
-                    .or_insert(vec![event]);
+                let id = (event.scope.clone(), event.id, event.category.clone());
+                app_trace.async_tasks.entry(id).or_default().push(event);
             }
             EventPhase::ObjectCreate | EventPhase::ObjectSnapshot | EventPhase::ObjectDestroy => {
-                let object_lifecycle_id = (event.scope.clone(), event.id);
+                let id = (event.scope.clone(), event.id);
                 app_trace
                     .object_life_cycle
-                    .entry(object_lifecycle_id)
-                    .and_modify(|events| events.push(event.clone()))
-                    .or_insert(vec![event]);
+                    .entry(id)
+                    .or_default()
+                    .push(event);
             }
             _ => (),
         }
