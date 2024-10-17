@@ -9,8 +9,9 @@ mod verify;
 
 mod visualize;
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct CCT {
+    events: Vec<Event>,
     nodes: Vec<CCTNode>,
     metadata: CCTMeta,
 }
@@ -21,7 +22,7 @@ pub struct CCTNode {
     start_time: i64,
     stop_time: Option<i64>,
     parent_node_id: Option<usize>,
-    event: Event,
+    event_id: usize,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -36,14 +37,14 @@ impl CCTNode {
         start_time: i64,
         stop_time: Option<i64>,
         parent_node_id: Option<usize>,
-        event: Event,
+        event_id: usize,
     ) -> Self {
         Self {
             id,
             start_time,
             stop_time,
             parent_node_id,
-            event,
+            event_id,
         }
     }
 }
@@ -58,7 +59,7 @@ impl CCT {
         );
         Self {
             nodes: vec![root],
-            metadata: Default::default(),
+            ..Default::default()
         }
     }
     fn root(&self) -> &CCTNode {
@@ -70,9 +71,9 @@ impl CCT {
         start_time: i64,
         stop_time: Option<i64>,
         parent: Option<usize>,
-        event: Event,
+        event_id: usize,
     ) -> &CCTNode {
-        let node = CCTNode::new(self.nodes.len(), start_time, stop_time, parent, event);
+        let node = CCTNode::new(self.nodes.len(), start_time, stop_time, parent, event_id);
         self.nodes.push(node);
         self.nodes.last().unwrap()
     }
@@ -86,7 +87,7 @@ impl CCT {
 }
 
 impl CCT {
-    pub fn from_events(events: Vec<Event>) -> Self {
+    pub fn from_events(mut events: Vec<Event>) -> Self {
         let mut cct = CCT::new();
         let mut stack = Vec::with_capacity(events.len() / 2);
         stack.push(cct.root().id);
@@ -111,12 +112,13 @@ impl CCT {
             parent
         }
 
-        for event in events {
+        for event_id in 0..events.len() {
+            let event = &events[event_id];
             match event.phase_type {
                 EventPhase::SyncBegin | EventPhase::AsyncBegin | EventPhase::ObjectCreate => {
                     let parent = pop_until_valid_parent(&cct, &mut stack, &event);
                     stack.push(
-                        cct.new_node(event.timestamp, None, Some(parent.id), event)
+                        cct.new_node(event.timestamp, None, Some(parent.id), event_id)
                             .id,
                     );
                 }
@@ -136,9 +138,14 @@ impl CCT {
                         }
                     };
 
+                    // rust's double-mut-pointer-to-array trick!
+                    let timestamp = event.timestamp;
+                    let event_id_of_node = cct.get_node(id).event_id;
+                    let (left, right) = events.split_at_mut(event_id_of_node + 1);
+                    left[event_id_of_node].merge(&mut right[event_id - event_id_of_node - 1]);
+
                     let node = cct.get_node_mut(id);
-                    node.stop_time = Some(event.timestamp);
-                    node.event.merge(event)
+                    node.stop_time = Some(timestamp);
                 }
                 EventPhase::SyncInstant
                 | EventPhase::AsyncInstant
@@ -151,7 +158,7 @@ impl CCT {
                         event.timestamp,
                         Some(event.timestamp),
                         Some(parent.id),
-                        event,
+                        event_id,
                     );
                 }
                 EventPhase::Complete => {
@@ -161,7 +168,7 @@ impl CCT {
                             event.timestamp,
                             event.duration.or(Some(0)).map(|dur| dur + event.timestamp),
                             Some(parent.id),
-                            event,
+                            event_id,
                         )
                         .id;
                     stack.push(node_id);
@@ -171,7 +178,7 @@ impl CCT {
                 | EventPhase::Clock
                 | EventPhase::FlowStart
                 | EventPhase::FlowStep
-                | EventPhase::FlowEnd => ignored(event),
+                | EventPhase::FlowEnd => ignored(&event),
                 EventPhase::Metadata => {
                     let name = extract_name_from_args(&event);
                     match &*event.name {
@@ -184,6 +191,7 @@ impl CCT {
                 EventPhase::ContextLeave => todo!(),
             }
         }
+        cct.events = events;
         cct
     }
     pub fn normalize(&mut self) -> &Self {
@@ -236,7 +244,7 @@ fn extract_name_from_args(event: &Event) -> String {
     return String::from("");
 }
 
-fn ignored(event: Event) {
+fn ignored(event: &Event) {
     info!("event of phase {} is ignored", event.phase_type)
 }
 
@@ -301,8 +309,11 @@ impl Display for CCTNode {
                 self.start_time,
                 self.stop_time.unwrap_or(-1)
             ),
-            self.event.name,
-            self.event.phase_type,
+            "name_place_holder",
+            "type_place_holder",
+            // TODO
+            //self.event.name,
+            //self.event.phase_type,
         )
     }
 }

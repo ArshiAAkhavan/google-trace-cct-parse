@@ -39,18 +39,19 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn merge(&mut self, other: Self) {
+    pub fn merge(&mut self, other: &mut Self) {
         if !other.name.is_empty() {
-            self.name = other.name
+            std::mem::swap(&mut self.name, &mut other.name);
+            //self.name = other.name
         }
         if !other.category.is_empty() {
-            self.category = other.category
+            std::mem::swap(&mut self.category, &mut other.category);
         }
         if other.id != 0 {
             self.id = other.id
         }
         if !other.scope.is_empty() {
-            self.scope = other.scope
+            std::mem::swap(&mut self.scope, &mut other.scope);
         }
         if other.pid != 0 {
             self.pid = other.pid
@@ -59,7 +60,7 @@ impl Event {
             self.tid = other.tid
         }
         if other.args.is_some() {
-            self.args = other.args
+            std::mem::swap(&mut self.args, &mut other.args);
         }
     }
 }
