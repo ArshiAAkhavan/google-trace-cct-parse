@@ -184,6 +184,7 @@ dependencies = [
  "parallel-parse",
  "parallel-read",
  "paste",
+ "rayon",
  "serde_json",
 ]
 

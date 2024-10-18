@@ -37,12 +37,20 @@ struct Opts {
     /// which implementation to run
     #[arg(short, long)]
     mode: Mode,
+
+    /// Number of threds,
+    #[arg(short, long)]
+    num_threads: usize,
 }
 
 fn main() -> std::io::Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     let opts = Opts::parse();
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(opts.num_threads)
+        .build_global()
+        .unwrap();
 
     info!("trace file: {}", opts.trace.to_string_lossy());
     match opts.mode {
