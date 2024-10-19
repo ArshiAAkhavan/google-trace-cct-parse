@@ -1,5 +1,6 @@
 use serde::Deserialize;
 
+/// Trace represents the data in a tracefile
 #[derive(Debug, Deserialize)]
 pub struct Trace {
     #[serde(rename = "traceEvents")]
@@ -12,6 +13,7 @@ pub type Scope = String;
 pub type Id = usize;
 pub type Category = String;
 
+/// Event represent each event in a tracefile
 #[derive(Debug, Deserialize, Clone, Eq, PartialEq, Default)]
 pub struct Event {
     pub name: String,

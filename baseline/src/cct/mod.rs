@@ -9,12 +9,19 @@ mod verify;
 
 mod visualize;
 
+/// CCT is the struct that holds the Calling Context Tree.
+/// each CCT consists of CCTMeta and a vector of CCTNodes.
 #[derive(Default, Clone)]
 pub struct CCT {
     nodes: Vec<CCTNode>,
     metadata: CCTMeta,
 }
 
+/// CCTNode is the representation of each context in the calling context tree.
+/// each node has an id, a parent id which points to its parent in the CCT.
+/// each node has an start and stop timestamp and holds the event from which the node
+/// is created.
+/// for event types that represent an instant in time, start and stop are equal.
 #[derive(Debug, Clone)]
 pub struct CCTNode {
     id: usize,
@@ -24,6 +31,8 @@ pub struct CCTNode {
     event: Event,
 }
 
+/// CCTMeta holds metadata of the tree.
+/// currently only process name and thread name are supported.
 #[derive(Debug, Clone, Default)]
 pub struct CCTMeta {
     process_name: Option<String>,
@@ -48,6 +57,7 @@ impl CCTNode {
     }
 }
 impl CCT {
+    /// creates a new CCT and allocates its first node as root.
     fn new() -> Self {
         let root = CCTNode::new(
             0,
@@ -61,10 +71,14 @@ impl CCT {
             ..Default::default()
         }
     }
+
+    /// returns a refrence to the tree's root node.
     fn root(&self) -> &CCTNode {
         &self.nodes[0]
     }
 
+    /// allocates a new node in the tree with the given parent_id as parent and returns a
+    /// refrence to it.
     fn new_node(
         &mut self,
         start_time: i64,
@@ -77,20 +91,28 @@ impl CCT {
         self.nodes.last().unwrap()
     }
 
+    /// takes the node id and returns an immutable refrence to the node.
     fn get_node(&self, id: usize) -> &CCTNode {
         &self.nodes[id]
     }
+
+    /// takes the node id and returns a mutable refrence to the node.
     fn get_node_mut(&mut self, id: usize) -> &mut CCTNode {
         &mut self.nodes[id]
     }
 }
 
 impl CCT {
-    pub fn from_events(events: Vec<Event>) -> Self {
+    /// creates the cct from a vector of events.
+    fn from_events(events: Vec<Event>) -> Self {
         let mut cct = CCT::new();
         let mut stack = Vec::with_capacity(events.len() / 2);
         stack.push(cct.root().id);
 
+        // some nodes are made from instant events or duration events which represent a full
+        // node instead of half of a node. when poping the event stack to get a handle to the
+        // parent node, we should check if the parent node has a valid stop_timestamp and if,
+        // check if the stop_timestamp is bigger than the event.timestamp
         fn pop_until_valid_parent<'a>(
             cct: &'a CCT,
             event_stack: &mut Vec<usize>,
@@ -114,13 +136,16 @@ impl CCT {
         for mut event in events {
             match event.phase_type {
                 EventPhase::SyncBegin | EventPhase::AsyncBegin | EventPhase::ObjectCreate => {
+                    // create half of a node, set its parent, and push it into stack
                     let parent = pop_until_valid_parent(&cct, &mut stack, &event);
                     stack.push(
                         cct.new_node(event.timestamp, None, Some(parent.id), event)
                             .id,
                     );
                 }
+
                 EventPhase::SyncEnd | EventPhase::AsyncEnd | EventPhase::ObjectDestroy => {
+                    // pop a half node from stack and complete it.
                     let id = loop {
                         match stack.pop() {
                             Some(id) => {
@@ -140,12 +165,14 @@ impl CCT {
                     node.stop_time = Some(event.timestamp);
                     node.event.merge(&mut event);
                 }
+
                 EventPhase::SyncInstant
                 | EventPhase::AsyncInstant
                 | EventPhase::ObjectSnapshot
                 | EventPhase::MemoryDumpProcess
                 | EventPhase::MemoryDumpGlobal
                 | EventPhase::Mark => {
+                    // create a full node and set its parent
                     let parent = pop_until_valid_parent(&cct, &mut stack, &event);
                     cct.new_node(
                         event.timestamp,
@@ -155,6 +182,7 @@ impl CCT {
                     );
                 }
                 EventPhase::Complete => {
+                    // create a full node and push into the stack
                     let parent = pop_until_valid_parent(&cct, &mut stack, &event);
                     let node_id = cct
                         .new_node(
@@ -171,8 +199,11 @@ impl CCT {
                 | EventPhase::Clock
                 | EventPhase::FlowStart
                 | EventPhase::FlowStep
+                | EventPhase::ContextEnter
+                | EventPhase::ContextLeave
                 | EventPhase::FlowEnd => ignored(&event),
                 EventPhase::Metadata => {
+                    // update CCT metadata
                     let name = extract_name_from_args(&event);
                     match &*event.name {
                         "process_name" => cct.metadata.process_name = Some(name),
@@ -180,12 +211,14 @@ impl CCT {
                         _ => (),
                     }
                 }
-                EventPhase::ContextEnter => todo!(),
-                EventPhase::ContextLeave => todo!(),
             }
         }
         cct
     }
+
+    /// normalize timestamps to be more human readable.
+    /// this function substracts the root's start timestamp from all nodes
+    /// to make the periods more human readable.
     pub fn normalize(&mut self) -> &Self {
         let time_shift = self
             .nodes
@@ -202,7 +235,6 @@ impl CCT {
             .max()
             .unwrap_or(Some(i64::max_value()));
 
-        // Initialize TreeNodes
         self.nodes.iter_mut().for_each(|node| {
             if node.id == 0 {
                 node.start_time = time_shift;
@@ -222,6 +254,8 @@ impl From<Vec<Event>> for CCT {
     }
 }
 
+/// tries to extract name field from a json map
+/// returns a empty string if none is found
 fn extract_name_from_args(event: &Event) -> String {
     if let Some(args) = &event.args {
         if let serde_json::Value::Object(obj) = args {
@@ -315,6 +349,9 @@ mod test {
 
     use crate::{build_application_cct, cct::verify, collect_traces, Trace};
 
+    /// ensures that the tree constraint holds, i.e.,
+    /// for each pair of nodes (N1,N2) | N1 is an ancestor of N2 <==> N1 period encapsulates N2
+    /// period
     #[test]
     fn check_cct_ordering() -> std::io::Result<()> {
         let trace: Trace = collect_traces(Path::new("../data/trace-valid-ending.json"))?;

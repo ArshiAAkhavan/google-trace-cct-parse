@@ -5,6 +5,7 @@ use serde::{
     Deserializer,
 };
 
+/// deserialize a number that might be formated in hex
 pub fn de_hex_to_int<'de, D>(deserializer: D) -> Result<usize, D::Error>
 where
     D: Deserializer<'de>,

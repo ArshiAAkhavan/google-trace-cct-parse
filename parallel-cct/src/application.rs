@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
-use baseline::{Category, Event, Id, ProcessId, Scope, ThreadId, CCT};
+use baseline::{ApplicationCCT, Category, Event, Id, ProcessId, Scope, ThreadId, CCT};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 pub type SyncTaskId = (ProcessId, ThreadId);
 type AsyncTaskId = (Scope, Id, Category);
 type ObjectLifeCycleId = (Scope, Id);
 
+/// ApplicationTrace is a middle stage that holds a series of vectors of events,
+/// each later used to construct a new CCT.
 #[derive(Debug, Default)]
 pub struct ApplicationTrace {
     pub sync_tasks: HashMap<SyncTaskId, Vec<Event>>,
@@ -23,19 +25,19 @@ impl ApplicationTrace {
         let sync_tasks: HashMap<SyncTaskId, CCT> = self
             .sync_tasks
             .into_par_iter()
-            .map(|(id, events)| (id, CCT::from_events(events)))
+            .map(|(id, events)| (id, CCT::from(events)))
             .collect();
 
         let async_tasks: HashMap<AsyncTaskId, CCT> = self
             .async_tasks
             .into_par_iter()
-            .map(|(id, events)| (id, CCT::from_events(events)))
+            .map(|(id, events)| (id, CCT::from(events)))
             .collect();
 
         let object_life_cycle: HashMap<ObjectLifeCycleId, CCT> = self
             .object_life_cycle
             .into_par_iter()
-            .map(|(id, events)| (id, CCT::from_events(events)))
+            .map(|(id, events)| (id, CCT::from(events)))
             .collect();
 
         ApplicationCCT {
@@ -44,11 +46,4 @@ impl ApplicationTrace {
             object_life_cycle,
         }
     }
-}
-
-#[derive(Debug, Default)]
-pub struct ApplicationCCT {
-    pub sync_tasks: HashMap<SyncTaskId, CCT>,
-    pub async_tasks: HashMap<AsyncTaskId, CCT>,
-    pub object_life_cycle: HashMap<ObjectLifeCycleId, CCT>,
 }

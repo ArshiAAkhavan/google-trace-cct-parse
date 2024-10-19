@@ -65,6 +65,12 @@ fn consume<T>(data: T) {
     _ = data;
 }
 
+/// track! records execution time of the given expression and outputs it into the stdout.
+/// ```rust
+/// let _val = track!(some_heavy_computation(arg1, arg2));
+/// // output:
+/// // some_heavy_computation(arg1, arg2): 123
+/// ```
 macro_rules! track {
     ($func:expr) => {{
         use std::time::Instant;
@@ -85,6 +91,7 @@ macro_rules! track {
     }};
 }
 
+/// gen_bench! creates a funcion for benchmarking an implementation crate
 macro_rules! gen_bench {
     ($crate_name:ident) => {
         paste::item! {

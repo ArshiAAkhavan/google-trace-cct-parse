@@ -1,28 +1,28 @@
-use std::fs::File;
-use std::io::BufRead;
-use std::io::BufReader;
-use std::io::Result;
-use std::path::Path;
+use std::{
+    fs::File,
+    io::{BufRead, BufReader, Result},
+    path::Path,
+};
 
-use application::ApplicationCCT;
 use application::ApplicationTrace;
-use baseline::Event;
-use baseline::EventPhase;
+use baseline::{ApplicationCCT, Event, EventPhase};
 use log::debug;
-use rayon::iter::IntoParallelRefIterator;
-use rayon::iter::ParallelIterator;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 mod application;
 mod read;
 
+/// build_application_cct converts ApplicationTrace into ApplicationCCT
 pub fn build_application_cct(app_trace: ApplicationTrace) -> ApplicationCCT {
     app_trace.application_cct()
 }
 
+/// collect_traces reads a tracefile and construct an ApplicationTrace
 pub fn collect_traces(file_path: &Path) -> Result<ApplicationTrace> {
     let num_threads = rayon::current_num_threads();
     debug!("concurrency level: {num_threads}");
 
+    // read file size
     let file = File::open(file_path)?;
     let file_size = file.metadata()?.len();
 
@@ -30,8 +30,10 @@ pub fn collect_traces(file_path: &Path) -> Result<ApplicationTrace> {
     // i.e., {"traceEvents":[
     let init_skip = BufReader::new(file).read_until(b'\n', &mut vec![]).unwrap();
 
+    // calculate chunksize
     let chunk_size = (file_size as usize - init_skip + num_threads - 1) / num_threads;
 
+    // create thread ids
     let threads: Vec<usize> = (0..num_threads).collect();
 
     let application_trace = threads
@@ -60,6 +62,7 @@ pub fn collect_traces(file_path: &Path) -> Result<ApplicationTrace> {
     Ok(application_trace)
 }
 
+/// creates an ApplicationTrace from a vector of events
 fn build_application_trace(events: Vec<Event>) -> ApplicationTrace {
     let mut app_trace = ApplicationTrace::new();
     for event in events.into_iter() {

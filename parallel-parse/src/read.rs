@@ -10,6 +10,7 @@ use log::debug;
 
 type Line = Vec<u8>;
 
+/// reads a chunk of the trace file and extract all lines from it.
 fn read_chunk(file: File, start_pos: u64, chunk_size: usize) -> Result<Vec<Line>> {
     let mut lines = Vec::new();
     // Seek to the start position assigned to the thread
@@ -54,6 +55,7 @@ fn read_chunk(file: File, start_pos: u64, chunk_size: usize) -> Result<Vec<Line>
     Ok(lines)
 }
 
+/// collect_events gets a trace file path and reads a chunk of it to generate its lines
 fn collect_lines(
     thread_id: usize,
     file_path: &Path,
@@ -66,6 +68,8 @@ fn collect_lines(
     Ok(lines)
 }
 
+/// takes a path to the trace file and split the loading and json parsing of it between threads.
+/// this function creates a Trace of the given file.
 pub fn parallel_parse(file_path: &Path) -> Result<Trace> {
     let num_threads = rayon::current_num_threads();
     debug!("concurrency level: {num_threads}");

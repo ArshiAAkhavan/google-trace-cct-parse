@@ -8,6 +8,7 @@ use std::{
 
 use log::{debug, warn};
 
+/// reads a chunk of the trace file and extract all events from it.
 fn read_chunk(file: File, start_pos: u64, chunk_size: usize) -> Result<Vec<Event>> {
     let mut events = Vec::new();
     // Seek to the start position assigned to the thread
@@ -64,6 +65,7 @@ fn read_chunk(file: File, start_pos: u64, chunk_size: usize) -> Result<Vec<Event
     Ok(events)
 }
 
+/// collect_events gets a trace file path and reads a chunk of it to generate its events
 fn collect_events(
     thread_id: usize,
     file_path: &Path,
@@ -76,6 +78,8 @@ fn collect_events(
     Ok(events)
 }
 
+/// takes a path to the trace file and split the loading and json parsing of it between threads.
+/// this function creates a Trace of the given file.
 pub fn parallel_read(file_path: &Path) -> Result<Trace> {
     let num_threads = rayon::current_num_threads();
     debug!("concurrency level: {num_threads}");

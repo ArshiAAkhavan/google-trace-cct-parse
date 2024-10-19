@@ -1,9 +1,12 @@
 use super::CCT;
 
+/// VisualTree holds the visual represntation of the CCT which is later used by CCT to generate
+/// Display and Debug functionality.
 pub struct VisualTree {
     nodes: Vec<VisualNode>,
 }
 
+/// creates a visual representation of the CCT
 pub fn build_visual_tree(cct: &CCT) -> VisualTree {
     let min_time = cct
         .nodes
@@ -43,6 +46,7 @@ pub fn build_visual_tree(cct: &CCT) -> VisualTree {
     tree
 }
 
+/// VisualNode is a visual representation of a CCT node.
 struct VisualNode {
     id: usize,
     start: i64,
@@ -50,6 +54,7 @@ struct VisualNode {
     children: Vec<usize>,
 }
 
+/// prints the VisualTree into a vector of strings
 pub fn visualize_tree(tree: &VisualTree, max_char: usize) -> Vec<String> {
     let root = &tree.nodes[0];
     let mut lines = Vec::new();
@@ -58,6 +63,7 @@ pub fn visualize_tree(tree: &VisualTree, max_char: usize) -> Vec<String> {
     lines
 }
 
+/// prints the VisualNode into a vector of strings
 fn visualize(
     root: &VisualNode,
     tree: &VisualTree,

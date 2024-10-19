@@ -7,6 +7,7 @@ use std::{
 
 use log::warn;
 
+/// reads a chunk of the trace file and extract all events from it.
 fn read_chunk(file: File, start_pos: u64, chunk_size: usize) -> Result<Vec<Event>> {
     let mut events = Vec::new();
     // Seek to the start position assigned to the thread
@@ -63,6 +64,7 @@ fn read_chunk(file: File, start_pos: u64, chunk_size: usize) -> Result<Vec<Event
     Ok(events)
 }
 
+/// collect_events gets a trace file path and reads a chunk of it to generate events
 pub fn collect_events(
     thread_id: usize,
     file_path: &Path,
@@ -73,24 +75,4 @@ pub fn collect_events(
     let start_pos = init_skip + (thread_id * chunk_size) as u64;
     let events: Vec<Event> = read_chunk(file, start_pos, chunk_size)?;
     Ok(events)
-}
-
-#[cfg(test)]
-mod test {
-    use std::path::Path;
-
-    #[test]
-    fn check_events_are_read_correctly() -> std::io::Result<()> {
-        let file_path = "../data/trace-valid-ending.json";
-        let trace_sync = baseline::collect_traces(Path::new(file_path))?;
-        let trace_parallel = super::parallel_read(Path::new(file_path))?;
-
-        assert_eq!(trace_sync.events.len(), trace_parallel.events.len());
-
-        for (event1, event2) in trace_sync.events.iter().zip(trace_parallel.events.iter()) {
-            assert_eq!(event1, event2);
-        }
-
-        Ok(())
-    }
 }

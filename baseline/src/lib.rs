@@ -15,6 +15,7 @@ pub use cct::CCT;
 pub use trace::{Category, Id, ProcessId, Scope, ThreadId};
 pub use trace::{Event, EventPhase, Trace};
 
+/// collect_traces reads a tracefile and construct a Trace
 pub fn collect_traces(trace_path: &Path) -> Result<Trace> {
     let data = File::open(trace_path)?;
     let data = BufReader::new(data);
@@ -22,6 +23,8 @@ pub fn collect_traces(trace_path: &Path) -> Result<Trace> {
     Ok(trace)
 }
 
+/// build_application_cct reads the Trace and creates the ApplicationCCT
+/// from the trace
 pub fn build_application_cct(trace: Trace) -> ApplicationCCT {
     let mut app_trace = ApplicationTrace::new();
 
