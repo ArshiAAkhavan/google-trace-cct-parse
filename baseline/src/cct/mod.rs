@@ -301,11 +301,8 @@ impl Display for CCTNode {
                 self.start_time,
                 self.stop_time.unwrap_or(-1)
             ),
-            "name_place_holder",
-            "type_place_holder",
-            // TODO
-            //self.event.name,
-            //self.event.phase_type,
+            self.event.name,
+            self.event.phase_type,
         )
     }
 }
