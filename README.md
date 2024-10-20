@@ -26,11 +26,11 @@ cargo test
 ```
 to run benchmark you can use the bench script.
 ```bash
-./run-bench.sh path/to/trace/directory > bench-out.txt
+./run-bench.sh path/to/trace/directory > bench.out
 ```
 to visualize the output you can use the visualize python script
 ```bash
-python3 visualize.py bench-out.txt
+python3 visualize.py bench.out
 ```
 ## Introduction
 
